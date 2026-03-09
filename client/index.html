@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FriendsCall</title>
+  <link rel="stylesheet" href="/styles/main.css" />
+</head>
+<body>
+  <!-- LOBBY (shown when no room in URL) -->
+  <div id="lobby" class="lobby hidden">
+    <div class="lobby-card">
+      <div class="logo">
+        <span class="logo-icon">📹</span>
+        <h1>FriendsCall</h1>
+        <p>Video calls for up to 10 friends</p>
+      </div>
+      <div class="lobby-form">
+        <input type="text" id="display-name" placeholder="Your name" maxlength="30" autocomplete="off" />
+        <input type="text" id="room-input" placeholder="Room name (or leave blank for random)" maxlength="40" autocomplete="off" />
+        <button id="join-btn" class="btn btn-primary">Start / Join Call</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROOM -->
+  <div id="room" class="room hidden">
+    <!-- Header -->
+    <header class="room-header">
+      <div class="room-info">
+        <span class="logo-small">📹 FriendsCall</span>
+        <span id="room-name-display" class="room-badge"></span>
+        <span id="participant-count" class="participant-count">1 participant</span>
+      </div>
+      <button id="copy-link-btn" class="btn btn-secondary btn-sm">Copy Invite Link</button>
+    </header>
+
+    <!-- Main area -->
+    <main class="room-main">
+      <!-- Video Grid -->
+      <div id="video-grid" class="video-grid"></div>
+
+      <!-- Chat Sidebar -->
+      <aside id="chat-sidebar" class="chat-sidebar">
+        <div class="chat-header">Chat</div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <form id="chat-form" class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Send a message..." maxlength="500" autocomplete="off" />
+          <button type="submit" class="btn btn-primary btn-sm">Send</button>
+        </form>
+      </aside>
+    </main>
+
+    <!-- Controls Bar -->
+    <footer class="controls-bar">
+      <button id="mute-btn" class="ctrl-btn" title="Toggle Microphone">
+        <span class="ctrl-icon">🎙️</span>
+        <span class="ctrl-label">Mute</span>
+      </button>
+      <button id="camera-btn" class="ctrl-btn" title="Toggle Camera">
+        <span class="ctrl-icon">📷</span>
+        <span class="ctrl-label">Camera</span>
+      </button>
+      <button id="screen-btn" class="ctrl-btn" title="Share Screen">
+        <span class="ctrl-icon">🖥️</span>
+        <span class="ctrl-label">Share</span>
+      </button>
+      <button id="chat-btn" class="ctrl-btn" title="Toggle Chat">
+        <span class="ctrl-icon">💬</span>
+        <span class="ctrl-label">Chat</span>
+      </button>
+      <button id="leave-btn" class="ctrl-btn ctrl-btn-danger" title="Leave Call">
+        <span class="ctrl-icon">📵</span>
+        <span class="ctrl-label">Leave</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Scripts -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/src/signaling.js"></script>
+  <script src="/src/peer.js"></script>
+  <script src="/src/media.js"></script>
+  <script src="/src/ui.js"></script>
+  <script src="/src/room.js"></script>
+  <script src="/src/main.js"></script>
+</body>
+</html>
