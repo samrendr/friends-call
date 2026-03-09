@@ -6,6 +6,10 @@ const Room = (() => {
   let currentRoomId = null;
   let audioEnabled = true;
   let videoEnabled = true;
+  let _pointing = false;
+  let _hasConnected = false;
+  let _agentInfo = null;    // { agentId, displayName, screenWidth, screenHeight }
+  let _controlActive = false;
 
   function getPeersArray() {
     return [...peers.values()];
@@ -23,7 +27,6 @@ const Room = (() => {
     return (socketId, stream) => {
       const peer = peers.get(socketId);
       const displayName = peer ? peer.displayName : socketId;
-      // Create tile if it doesn't exist yet
       if (!document.querySelector(`.video-tile[data-socket-id="${socketId}"]`)) {
         UI.createVideoTile(socketId, displayName, stream);
       } else {
@@ -55,7 +58,43 @@ const Room = (() => {
     UI.updateParticipantCount(peers.size + 1);
   }
 
+  // ---- Reconnect ----
+
+  function _handleReconnect() {
+    UI.showReconnecting(false);
+    UI.showToast('Back online — rejoining call...', 3000);
+
+    // Close and remove all stale peer connections
+    peers.forEach((peer, socketId) => {
+      peer.close();
+      UI.removeVideoTile(socketId);
+    });
+    peers.clear();
+
+    // Re-join the room (media stream is still live)
+    Signaling.joinRoom(currentRoomId, myDisplayName);
+  }
+
+  // ---- Signaling event bindings ----
+
   function bindSignalingEvents() {
+    // Auto-reconnect: detect drop vs. intentional leave
+    Signaling.on('disconnect', (reason) => {
+      if (reason === 'io client disconnect') return; // user clicked Leave
+      UI.showReconnecting(true);
+    });
+
+    // Socket connected — detect reconnection by checking _hasConnected flag
+    Signaling.on('connect', () => {
+      if (!_hasConnected) { _hasConnected = true; return; }
+      _handleReconnect();
+    });
+
+    Signaling.onManager('reconnect_failed', () => {
+      UI.showReconnecting(false);
+      UI.showToast('Could not reconnect. Please refresh the page.', 0);
+    });
+
     // Existing participants list (we are new joiner — initiate offers to everyone)
     Signaling.on('room-joined', async ({ socketId, participants, roomId }) => {
       mySocketId = socketId;
@@ -72,9 +111,8 @@ const Room = (() => {
 
     // Someone joined after us
     Signaling.on('user-joined', ({ socketId, displayName }) => {
-      // Don't create peer yet — wait for their offer
       UI.showToast(`${displayName} joined`);
-      UI.updateParticipantCount(peers.size + 2); // +1 for new user, +1 for self
+      UI.updateParticipantCount(peers.size + 2);
     });
 
     // Incoming offer
@@ -101,6 +139,7 @@ const Room = (() => {
     // Someone left
     Signaling.on('user-left', ({ socketId }) => {
       removePeer(socketId);
+      UI.hidePointerDot(socketId); // clean up any pointer they had
     });
 
     // Room full
@@ -118,13 +157,66 @@ const Room = (() => {
     Signaling.on('peer-toggle-state', ({ fromId, kind, enabled }) => {
       UI.setTileIconState(fromId, kind, enabled);
     });
+
+    // Incoming emoji reaction (sender shows immediately, skip own echo)
+    Signaling.on('emoji-reaction', ({ fromId, displayName, emoji }) => {
+      if (fromId !== mySocketId) UI.showEmojiSplash(emoji, displayName);
+    });
+
+    // Agent connected (remote-agent.js joined the room)
+    Signaling.on('agent-ready', ({ agentId, displayName, screenWidth, screenHeight }) => {
+      _agentInfo = { agentId, displayName, screenWidth, screenHeight };
+      UI.showToast(`🕹 ${displayName} is ready for remote control`, 3000);
+      UI.setControlAvailable(true, displayName);
+    });
+
+    Signaling.on('agent-left', ({ agentId }) => {
+      if (!_agentInfo || _agentInfo.agentId !== agentId) return;
+      if (_controlActive) _stopControl();
+      _agentInfo = null;
+      UI.setControlAvailable(false);
+      UI.showToast('Remote agent disconnected');
+    });
+
+    // Control granted by agent
+    Signaling.on('control-granted', ({ agentId, agentName, screenWidth, screenHeight }) => {
+      if (_agentInfo) { _agentInfo.screenWidth = screenWidth; _agentInfo.screenHeight = screenHeight; }
+      _controlActive = true;
+      UI.setControlBtnState('active');
+      UI.showToast(`✅ Controlling ${agentName} — move your mouse over the video area`, 4000);
+      _attachControlListeners();
+    });
+
+    Signaling.on('control-denied', () => {
+      UI.setControlBtnState('available');
+      UI.showToast('Control request was denied');
+    });
+
+    // Control revoked (agent pressed Ctrl+C or ended session)
+    Signaling.on('control-revoked', () => {
+      _controlActive = false;
+      _detachControlListeners();
+      UI.setControlBtnState('available');
+      UI.showToast('Remote control ended by agent');
+    });
+
+    // Laser pointer: remote participant moving cursor
+    Signaling.on('pointer-move', ({ fromId, displayName, targetSocketId, x, y }) => {
+      UI.showPointerDot(targetSocketId, fromId, x, y, displayName);
+    });
+
+    // Laser pointer: remote participant stopped pointing
+    Signaling.on('pointer-end', ({ fromId }) => {
+      UI.hidePointerDot(fromId);
+    });
   }
+
+  // ---- Join ----
 
   async function join(roomId, displayName) {
     myDisplayName = displayName;
     currentRoomId = roomId;
 
-    // Get media first
     let stream;
     try {
       stream = await Media.getLocalStream();
@@ -136,17 +228,16 @@ const Room = (() => {
 
     UI.showRoom();
     UI.setRoomName(roomId);
-
-    // Show own video
     UI.createVideoTile('self', displayName, stream, true);
 
-    // Connect and join
     Signaling.connect(window.location.origin);
     bindSignalingEvents();
     Signaling.joinRoom(roomId, displayName);
 
     return true;
   }
+
+  // ---- Controls ----
 
   function toggleAudio() {
     audioEnabled = !audioEnabled;
@@ -187,7 +278,6 @@ const Room = (() => {
         btn.classList.add('active');
         btn.querySelector('.ctrl-label').textContent = 'Stop';
         UI.showToast('Screen sharing started');
-
         track.onended = () => {
           btn.classList.remove('active');
           btn.querySelector('.ctrl-label').textContent = 'Share';
@@ -198,15 +288,159 @@ const Room = (() => {
     }
   }
 
+  function togglePointer() {
+    _pointing = !_pointing;
+    const btn = document.getElementById('point-btn');
+    UI.setCtrlState(btn, _pointing);
+    btn.querySelector('.ctrl-label').textContent = _pointing ? 'Stop' : 'Point';
+
+    if (_pointing) {
+      UI.showToast('Laser pointer on — hover over any tile', 2000);
+    } else {
+      UI.hidePointerDot('local');
+      Signaling.sendPointerEnd(currentRoomId);
+    }
+
+    UI.setPointerMode(
+      _pointing,
+      (targetSocketId, x, y) => {
+        Signaling.sendPointerMove(currentRoomId, targetSocketId, x, y);
+        UI.showPointerDot(targetSocketId, 'local', x, y, myDisplayName + ' (You)');
+      },
+      () => {
+        UI.hidePointerDot('local');
+        Signaling.sendPointerEnd(currentRoomId);
+      }
+    );
+
+    return _pointing;
+  }
+
+  // ---- Remote control ----
+
+  function toggleControl() {
+    _controlActive ? _stopControl() : _requestControl();
+  }
+
+  function _requestControl() {
+    if (!_agentInfo) return;
+    Signaling.sendControlRequest(_agentInfo.agentId, myDisplayName);
+    UI.setControlBtnState('pending');
+    UI.showToast(`Asking ${_agentInfo.displayName} for control...`, 5000);
+  }
+
+  function _stopControl() {
+    if (!_agentInfo) return;
+    Signaling.sendControlRevoke(_agentInfo.agentId);
+    _controlActive = false;
+    _detachControlListeners();
+    UI.setControlBtnState('available');
+  }
+
+  function _attachControlListeners() {
+    const zone = document.getElementById('video-grid');
+
+    const throttledMove = _throttle((e) => {
+      if (!_controlActive || !_agentInfo) return;
+      const { x, y } = _mapCoords(e.clientX, e.clientY);
+      Signaling.sendControlEvent(_agentInfo.agentId, 'mousemove', { x, y });
+    }, 33); // ~30 fps
+
+    zone._cMove = throttledMove;
+    zone._cClick = (e) => {
+      if (!_controlActive || !_agentInfo) return;
+      e.preventDefault();
+      const { x, y } = _mapCoords(e.clientX, e.clientY);
+      const type = e.type === 'dblclick' ? 'dblclick' : 'click';
+      Signaling.sendControlEvent(_agentInfo.agentId, type, { x, y, button: e.button === 2 ? 'right' : 'left' });
+    };
+    zone._cCtx = (e) => {
+      if (!_controlActive || !_agentInfo) return;
+      e.preventDefault();
+      const { x, y } = _mapCoords(e.clientX, e.clientY);
+      Signaling.sendControlEvent(_agentInfo.agentId, 'rightclick', { x, y });
+    };
+    zone._cScroll = (e) => {
+      if (!_controlActive || !_agentInfo) return;
+      e.preventDefault();
+      Signaling.sendControlEvent(_agentInfo.agentId, 'scroll', { x: e.deltaX, y: e.deltaY });
+    };
+    zone._cKey = (e) => {
+      if (!_controlActive || !_agentInfo) return;
+      // Don't intercept when user is typing in chat/input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      e.preventDefault();
+      const mods = [];
+      if (e.ctrlKey)  mods.push('control');
+      if (e.shiftKey) mods.push('shift');
+      if (e.altKey)   mods.push('alt');
+      if (e.metaKey)  mods.push('command');
+      const isPrintable = e.key.length === 1 && !e.ctrlKey && !e.metaKey;
+      if (isPrintable) {
+        Signaling.sendControlEvent(_agentInfo.agentId, 'typestring', { key: e.key });
+      } else {
+        Signaling.sendControlEvent(_agentInfo.agentId, 'keypress', { key: e.key, modifiers: mods });
+      }
+    };
+
+    zone.addEventListener('mousemove', zone._cMove);
+    zone.addEventListener('click',     zone._cClick);
+    zone.addEventListener('dblclick',  zone._cClick);
+    zone.addEventListener('contextmenu', zone._cCtx);
+    zone.addEventListener('wheel', zone._cScroll, { passive: false });
+    document.addEventListener('keydown', zone._cKey);
+    zone.style.cursor = 'crosshair';
+  }
+
+  function _detachControlListeners() {
+    const zone = document.getElementById('video-grid');
+    if (!zone) return;
+    zone.removeEventListener('mousemove',    zone._cMove);
+    zone.removeEventListener('click',        zone._cClick);
+    zone.removeEventListener('dblclick',     zone._cClick);
+    zone.removeEventListener('contextmenu',  zone._cCtx);
+    zone.removeEventListener('wheel',        zone._cScroll);
+    document.removeEventListener('keydown',  zone._cKey);
+    zone.style.cursor = '';
+  }
+
+  function _mapCoords(clientX, clientY) {
+    if (!_agentInfo) return { x: 0, y: 0 };
+    const zone = document.getElementById('video-grid');
+    const rect = zone.getBoundingClientRect();
+    const relX = Math.max(0, Math.min(1, (clientX - rect.left)  / rect.width));
+    const relY = Math.max(0, Math.min(1, (clientY - rect.top)   / rect.height));
+    return {
+      x: Math.round(relX * _agentInfo.screenWidth),
+      y: Math.round(relY * _agentInfo.screenHeight)
+    };
+  }
+
+  function _throttle(fn, ms) {
+    let last = 0;
+    return (...args) => { const now = Date.now(); if (now - last >= ms) { last = now; fn(...args); } };
+  }
+
+  // ---- Leave ----
+
   function leave() {
+    _pointing = false;
+    _hasConnected = false;
     peers.forEach(p => p.close());
     peers.clear();
     Media.stopAll();
     window.location.href = '/';
   }
 
-  function getRoomId() { return currentRoomId; }
-  function getMySocketId() { return mySocketId; }
+  function sendReaction(emoji) {
+    UI.showEmojiSplash(emoji, myDisplayName);
+    Signaling.sendEmojiReaction(currentRoomId, emoji);
+  }
 
-  return { join, toggleAudio, toggleVideo, toggleScreenShare, leave, getRoomId, getPeersArray };
+  function getRoomId() { return currentRoomId; }
+
+  return {
+    join, toggleAudio, toggleVideo, toggleScreenShare, togglePointer, toggleControl,
+    leave, getRoomId, getPeersArray, sendReaction
+  };
 })();

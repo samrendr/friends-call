@@ -1,0 +1,13 @@
+{
+  "name": "friendscall-agent",
+  "version": "1.0.0",
+  "description": "Remote control agent for FriendsCall — runs on the machine to be controlled",
+  "main": "remote-agent.js",
+  "scripts": {
+    "start": "node remote-agent.js"
+  },
+  "dependencies": {
+    "robotjs": "^0.6.0",
+    "socket.io-client": "^4.7.2"
+  }
+}

@@ -18,6 +18,9 @@ const MAX_PARTICIPANTS = 10;
 // Map: roomId -> Map(socketId -> { displayName, socketId })
 const rooms = new Map();
 
+// Map: agentSocketId -> { roomId, displayName, screenWidth, screenHeight, controllerId }
+const agents = new Map();
+
 app.use(cors());
 app.use(express.static(path.join(__dirname, '../client')));
 
@@ -116,11 +119,107 @@ io.on('connection', (socket) => {
     });
   });
 
+  // AGENT: remote-agent.js joins room
+  socket.on('agent-join', ({ roomId, displayName, screenWidth, screenHeight }) => {
+    if (!roomId) return;
+    agents.set(socket.id, { roomId, displayName, screenWidth, screenHeight, controllerId: null });
+    socket.join(roomId);
+    socket.roomId = roomId;
+    socket.isAgent = true;
+    socket.displayName = displayName;
+    // Tell browsers in the room an agent is ready
+    socket.to(roomId).emit('agent-ready', { agentId: socket.id, displayName, screenWidth, screenHeight });
+    console.log(`[Agent] ${displayName} ready in room ${roomId} (${screenWidth}x${screenHeight})`);
+  });
+
+  // CONTROL: browser requests control
+  socket.on('control-request', ({ agentId, requesterName }) => {
+    if (!agentId) return;
+    io.to(agentId).emit('control-request', { fromId: socket.id, fromName: requesterName || socket.displayName });
+  });
+
+  // CONTROL: agent grants
+  socket.on('control-grant', ({ controllerId, controllerName }) => {
+    const agent = agents.get(socket.id);
+    if (!agent) return;
+    if (agent.controllerId && agent.controllerId !== controllerId) {
+      io.to(agent.controllerId).emit('control-revoked');
+    }
+    agent.controllerId = controllerId;
+    io.to(controllerId).emit('control-granted', {
+      agentId: socket.id, agentName: agent.displayName,
+      screenWidth: agent.screenWidth, screenHeight: agent.screenHeight
+    });
+    io.to(agent.roomId).emit('control-status', { agentId: socket.id, active: true, controllerName });
+    console.log(`[Control] ${controllerName} → agent ${agent.displayName}`);
+  });
+
+  // CONTROL: agent denies
+  socket.on('control-deny', ({ controllerId }) => {
+    io.to(controllerId).emit('control-denied', { agentId: socket.id });
+  });
+
+  // CONTROL: relay mouse/keyboard events (security: only the granted controller)
+  socket.on('control-event', ({ agentId, type, x, y, button, key, modifiers }) => {
+    const agent = agents.get(agentId);
+    if (!agent || agent.controllerId !== socket.id) return;
+    io.to(agentId).emit('control-event', { type, x, y, button, key, modifiers });
+  });
+
+  // CONTROL: revoke (from either side)
+  socket.on('control-revoke', ({ agentId }) => {
+    const agent = agents.get(agentId);
+    if (!agent) return;
+    if (agent.controllerId) io.to(agent.controllerId).emit('control-revoked');
+    io.to(agent.roomId).emit('control-status', { agentId, active: false });
+    agent.controllerId = null;
+  });
+
+  // RELAY: laser pointer position
+  socket.on('pointer-move', ({ roomId, targetSocketId, x, y }) => {
+    if (!roomId) return;
+    socket.to(roomId).emit('pointer-move', {
+      fromId: socket.id,
+      displayName: socket.displayName,
+      targetSocketId,
+      x, y
+    });
+  });
+
+  // RELAY: laser pointer left
+  socket.on('pointer-end', ({ roomId }) => {
+    if (!roomId) return;
+    socket.to(roomId).emit('pointer-end', { fromId: socket.id });
+  });
+
+  // RELAY: emoji reaction
+  socket.on('emoji-reaction', ({ roomId, emoji }) => {
+    if (!roomId || !emoji) return;
+    io.to(roomId).emit('emoji-reaction', {
+      fromId: socket.id,
+      displayName: socket.displayName,
+      emoji
+    });
+  });
+
   // DISCONNECT
   socket.on('disconnect', () => {
     const roomId = socket.roomId;
     if (!roomId) return;
 
+    // Agent disconnect
+    if (socket.isAgent) {
+      const agent = agents.get(socket.id);
+      if (agent) {
+        if (agent.controllerId) io.to(agent.controllerId).emit('control-revoked');
+        socket.to(roomId).emit('agent-left', { agentId: socket.id });
+        agents.delete(socket.id);
+        console.log(`[Agent] ${socket.displayName} left room ${roomId}`);
+      }
+      return;
+    }
+
+    // Regular participant disconnect
     const room = rooms.get(roomId);
     if (room) {
       room.delete(socket.id);

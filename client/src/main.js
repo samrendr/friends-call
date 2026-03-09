@@ -56,7 +56,22 @@
     document.getElementById('mute-btn').addEventListener('click', () => Room.toggleAudio());
     document.getElementById('camera-btn').addEventListener('click', () => Room.toggleVideo());
     document.getElementById('screen-btn').addEventListener('click', () => Room.toggleScreenShare());
+    document.getElementById('control-btn').addEventListener('click', () => Room.toggleControl());
+    document.getElementById('point-btn').addEventListener('click', () => Room.togglePointer());
+    document.getElementById('react-btn').addEventListener('click', () => {
+      UI.toggleEmojiPicker((emoji) => Room.sendReaction(emoji));
+    });
     document.getElementById('leave-btn').addEventListener('click', () => Room.leave());
+
+    // View mode switcher
+    document.querySelectorAll('.view-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => UI.setViewMode(btn.dataset.mode));
+    });
+
+    // Escape → back to grid
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') UI.setViewMode('grid');
+    });
 
     // Chat toggle
     document.getElementById('chat-btn').addEventListener('click', () => {

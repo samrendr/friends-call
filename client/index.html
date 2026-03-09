@@ -32,7 +32,14 @@
         <span id="room-name-display" class="room-badge"></span>
         <span id="participant-count" class="participant-count">1 participant</span>
       </div>
-      <button id="copy-link-btn" class="btn btn-secondary btn-sm">Copy Invite Link</button>
+      <div class="header-right">
+        <div class="view-mode-bar" title="View mode">
+          <button class="view-mode-btn active" data-mode="grid" title="Grid view">⊞</button>
+          <button class="view-mode-btn" data-mode="spotlight" title="Spotlight">▣</button>
+          <button class="view-mode-btn" data-mode="focus" title="Focus">⬛</button>
+        </div>
+        <button id="copy-link-btn" class="btn btn-secondary btn-sm">Copy Invite Link</button>
+      </div>
     </header>
 
     <!-- Main area -->
@@ -64,6 +71,18 @@
       <button id="screen-btn" class="ctrl-btn" title="Share Screen">
         <span class="ctrl-icon">🖥️</span>
         <span class="ctrl-label">Share</span>
+      </button>
+      <button id="control-btn" class="ctrl-btn hidden" title="Remote Control (requires remote-agent.js running on target machine)">
+        <span class="ctrl-icon">🕹</span>
+        <span class="ctrl-label">Control</span>
+      </button>
+      <button id="point-btn" class="ctrl-btn" title="Laser Pointer (hover over any tile to point)">
+        <span class="ctrl-icon">🔴</span>
+        <span class="ctrl-label">Point</span>
+      </button>
+      <button id="react-btn" class="ctrl-btn" title="Send Reaction">
+        <span class="ctrl-icon">😊</span>
+        <span class="ctrl-label">React</span>
       </button>
       <button id="chat-btn" class="ctrl-btn" title="Toggle Chat">
         <span class="ctrl-icon">💬</span>

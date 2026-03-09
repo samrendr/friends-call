@@ -62,8 +62,22 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .room-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 20px; background: var(--bg2); border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+  flex-shrink: 0; gap: 12px;
 }
+.header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+/* ===== View Mode Bar ===== */
+.view-mode-bar {
+  display: flex; gap: 2px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 3px;
+}
+.view-mode-btn {
+  background: none; border: none; color: var(--text2); padding: 4px 9px;
+  border-radius: 5px; cursor: pointer; font-size: 15px; line-height: 1;
+  transition: background 0.12s, color 0.12s;
+}
+.view-mode-btn:hover { background: var(--bg2); color: var(--text); }
+.view-mode-btn.active { background: var(--accent); color: #fff; }
 .room-info { display: flex; align-items: center; gap: 14px; }
 .logo-small { font-weight: 700; font-size: 15px; }
 .room-badge {
@@ -86,9 +100,11 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .video-tile {
   position: relative; background: var(--bg3); border-radius: var(--tile-radius);
   overflow: hidden; aspect-ratio: 16/9; border: 2px solid transparent;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s; cursor: pointer;
 }
+.video-tile:hover { border-color: rgba(91,106,240,0.4); }
 .video-tile.speaking { border-color: var(--accent); }
+.video-tile.spotlighted { border-color: var(--accent) !important; }
 .video-tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .video-tile .tile-label {
   position: absolute; bottom: 8px; left: 10px; background: rgba(0,0,0,0.6);
@@ -105,6 +121,57 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .video-tile .avatar-fallback {
   width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
   font-size: 48px; background: linear-gradient(135deg, var(--bg3), #2a2f50);
+}
+
+/* Tile expand button */
+.tile-expand-btn {
+  position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.55);
+  border: none; border-radius: 6px; color: #fff; font-size: 13px;
+  width: 28px; height: 28px; cursor: pointer; opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10; line-height: 1;
+}
+.video-tile:hover .tile-expand-btn { opacity: 1; }
+.video-tile.spotlighted .tile-expand-btn { opacity: 1; background: var(--accent); }
+.tile-expand-btn:hover { background: var(--accent) !important; }
+
+/* ===== Spotlight Mode ===== */
+.video-grid.mode-spotlight {
+  display: flex !important;
+  flex-direction: row;
+  padding: 10px;
+  gap: 10px;
+  align-items: stretch;
+  grid-template-columns: unset !important;
+}
+.spotlight-main {
+  flex: 1; min-width: 0; border-radius: var(--tile-radius); overflow: hidden;
+  background: var(--bg3);
+}
+.spotlight-main .video-tile {
+  width: 100%; height: 100%; aspect-ratio: unset; border-radius: 0;
+  border: none; cursor: default;
+}
+.spotlight-main .video-tile:hover { border-color: transparent; }
+.spotlight-sidebar {
+  width: 188px; flex-shrink: 0; display: flex; flex-direction: column;
+  gap: 8px; overflow-y: auto;
+}
+.spotlight-sidebar .video-tile {
+  width: 100%; flex-shrink: 0; aspect-ratio: 16/9; cursor: pointer;
+}
+.spotlight-sidebar .video-tile:hover { border-color: var(--accent); }
+
+/* ===== Focus Mode ===== */
+.video-grid.mode-focus {
+  display: flex !important;
+  padding: 10px;
+  grid-template-columns: unset !important;
+}
+.video-grid.mode-focus .video-tile:not(.spotlighted) { display: none; }
+.video-grid.mode-focus .video-tile.spotlighted {
+  flex: 1; aspect-ratio: unset; height: 100%; cursor: default;
 }
 
 /* ===== Chat Sidebar ===== */
@@ -177,4 +244,142 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   .lobby-card { width: 95vw; padding: 32px 24px; }
   .controls-bar { gap: 8px; }
   .ctrl-btn { min-width: 54px; padding: 8px 10px; }
+}
+
+/* ===== Remote Control Active Border ===== */
+.video-grid.control-active {
+  outline: 3px solid #22c55e;
+  outline-offset: -3px;
+  cursor: crosshair !important;
+}
+.video-grid.control-active * { cursor: crosshair !important; }
+
+/* ===== Reconnect Bar ===== */
+.reconnect-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 4000;
+  background: var(--danger); color: #fff; text-align: center;
+  padding: 9px 16px; font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  animation: slideDown 0.3s ease;
+}
+.reconnect-spinner {
+  width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff; border-radius: 50%;
+  display: inline-block; animation: spin 0.8s linear infinite;
+}
+@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Laser Pointer ===== */
+.pointer-dot {
+  position: absolute; z-index: 50;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.pointer-ring {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(255, 60, 60, 0.85);
+  box-shadow: 0 0 0 3px rgba(255, 60, 60, 0.3), 0 0 12px rgba(255, 60, 60, 0.6);
+  animation: pointerPulse 1s ease-in-out infinite;
+}
+.pointer-dot--local .pointer-ring {
+  background: rgba(91, 106, 240, 0.9);
+  box-shadow: 0 0 0 3px rgba(91, 106, 240, 0.3), 0 0 12px rgba(91, 106, 240, 0.6);
+}
+.pointer-label {
+  font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap;
+  background: rgba(0,0,0,0.7); border-radius: 4px; padding: 1px 6px;
+}
+@keyframes pointerPulse {
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%       { transform: scale(1.3); opacity: 0.7; }
+}
+
+/* ===== Reaction Picker ===== */
+.emoji-picker {
+  position: fixed;
+  z-index: 2000;
+  width: 300px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  overflow: hidden;
+  /* No animation to avoid transform conflicts */
+}
+.reaction-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.reaction-tab {
+  flex: 1; background: none; border: none; color: var(--text2);
+  padding: 9px 4px; font-size: 11px; font-weight: 600; cursor: pointer;
+  transition: background 0.12s, color 0.12s; white-space: nowrap;
+}
+.reaction-tab:hover { background: var(--bg2); color: var(--text); }
+.reaction-tab.active { background: var(--bg2); color: var(--accent); border-bottom: 2px solid var(--accent); }
+.reaction-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  padding: 10px;
+}
+.reaction-btn {
+  font-size: 26px; background: none; border: none; border-radius: 8px;
+  padding: 6px 4px; cursor: pointer; line-height: 1;
+  transition: background 0.1s, transform 0.12s;
+}
+.reaction-btn:hover { background: var(--bg3); transform: scale(1.35); }
+.reaction-btn:active { transform: scale(0.9); }
+.reaction-btn--text {
+  font-size: 10px; font-weight: 800; color: var(--text);
+  letter-spacing: -0.3px; padding: 8px 2px; line-height: 1.2;
+  background: var(--bg3); border-radius: 6px;
+}
+.reaction-btn--text:hover { background: var(--accent); color: #fff; transform: scale(1.05); }
+
+/* ===== Emoji Splash ===== */
+.emoji-splash {
+  position: fixed;
+  bottom: 90px;
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  animation: emojiFloat var(--dur, 3s) cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+.emoji-splash-face {
+  font-size: 52px;
+  line-height: 1;
+  display: block;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+  animation: emojiPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.emoji-splash--text .emoji-splash-face {
+  font-size: 28px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(91,106,240,0.8), 2px 2px 0 rgba(0,0,0,0.8);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.emoji-splash-name {
+  font-size: 11px; font-weight: 700; color: #fff;
+  background: rgba(0,0,0,0.65); border-radius: 6px;
+  padding: 2px 8px; white-space: nowrap;
+}
+
+@keyframes emojiPop {
+  0%   { transform: scale(0.2) rotate(-15deg); opacity: 0; }
+  60%  { transform: scale(1.25) rotate(5deg);  opacity: 1; }
+  100% { transform: scale(1)    rotate(0deg);  opacity: 1; }
+}
+@keyframes emojiFloat {
+  0%   { transform: translateY(0)     rotate(0deg);                opacity: 1; }
+  30%  { transform: translateY(-120px) rotate(var(--wobble, 8deg)); opacity: 1; }
+  70%  { transform: translateY(-300px) rotate(calc(var(--wobble, 8deg) * -0.6)); opacity: 0.7; }
+  100% { transform: translateY(-480px) rotate(var(--wobble, 8deg)); opacity: 0; }
 }
