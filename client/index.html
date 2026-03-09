@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0f1117" />
   <title>FriendsCall</title>
   <link rel="stylesheet" href="/styles/main.css" />
 </head>
@@ -76,9 +79,9 @@
         <span class="ctrl-icon">🕹</span>
         <span class="ctrl-label">Control</span>
       </button>
-      <button id="point-btn" class="ctrl-btn" title="Laser Pointer (hover over any tile to point)">
-        <span class="ctrl-icon">🔴</span>
-        <span class="ctrl-label">Point</span>
+      <button id="record-btn" class="ctrl-btn" title="Record Call">
+        <span class="ctrl-icon">⏺️</span>
+        <span class="ctrl-label">Record</span>
       </button>
       <button id="react-btn" class="ctrl-btn" title="Send Reaction">
         <span class="ctrl-icon">😊</span>
@@ -103,6 +106,7 @@
   <script src="/src/signaling.js"></script>
   <script src="/src/peer.js"></script>
   <script src="/src/media.js"></script>
+  <script src="/src/recorder.js"></script>
   <script src="/src/ui.js"></script>
   <script src="/src/room.js"></script>
   <script src="/src/main.js"></script>

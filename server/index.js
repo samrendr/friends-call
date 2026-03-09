@@ -175,23 +175,6 @@ io.on('connection', (socket) => {
     agent.controllerId = null;
   });
 
-  // RELAY: laser pointer position
-  socket.on('pointer-move', ({ roomId, targetSocketId, x, y }) => {
-    if (!roomId) return;
-    socket.to(roomId).emit('pointer-move', {
-      fromId: socket.id,
-      displayName: socket.displayName,
-      targetSocketId,
-      x, y
-    });
-  });
-
-  // RELAY: laser pointer left
-  socket.on('pointer-end', ({ roomId }) => {
-    if (!roomId) return;
-    socket.to(roomId).emit('pointer-end', { fromId: socket.id });
-  });
-
   // RELAY: emoji reaction
   socket.on('emoji-reaction', ({ roomId, emoji }) => {
     if (!roomId || !emoji) return;

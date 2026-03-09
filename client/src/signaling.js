@@ -43,14 +43,6 @@ const Signaling = (() => {
   function sendControlEvent(agentId, type, data) { socket.emit('control-event', { agentId, type, ...data }); }
   function sendControlRevoke(agentId) { socket.emit('control-revoke', { agentId }); }
 
-  function sendPointerMove(roomId, targetSocketId, x, y) {
-    socket.emit('pointer-move', { roomId, targetSocketId, x, y });
-  }
-
-  function sendPointerEnd(roomId) {
-    socket.emit('pointer-end', { roomId });
-  }
-
   function on(event, cb) { socket.on(event, cb); }
   function off(event, cb) { socket.off(event, cb); }
   // For socket.io manager events (reconnect, etc.)
@@ -59,7 +51,6 @@ const Signaling = (() => {
   return {
     connect, getSocket, joinRoom, sendOffer, sendAnswer, sendIceCandidate,
     sendChatMessage, sendToggleState, sendEmojiReaction,
-    sendPointerMove, sendPointerEnd,
     sendControlRequest, sendControlGrant, sendControlDeny, sendControlEvent, sendControlRevoke,
     on, off, onManager
   };

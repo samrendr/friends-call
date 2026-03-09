@@ -42,7 +42,6 @@ const UI = (() => {
     tile.addEventListener('click', () => _handleTileClick(socketId));
 
     document.getElementById('video-grid').appendChild(tile);
-    _attachPointerListeners(tile); // inherit active pointer mode if on
     applyLayout();
     return tile;
   }
@@ -274,71 +273,6 @@ const UI = (() => {
     }
   }
 
-  // ---- Laser pointer ----
-
-  let _pointerActive = false;
-  let _pointerOnMove = null;
-  let _pointerOnEnd = null;
-
-  function _attachPointerListeners(tile) {
-    if (tile._pmHandler) tile.removeEventListener('mousemove', tile._pmHandler);
-    if (tile._pmLeave) tile.removeEventListener('mouseleave', tile._pmLeave);
-    if (!_pointerActive) { tile.style.cursor = ''; return; }
-
-    tile.style.cursor = 'crosshair';
-    tile._pmHandler = (e) => {
-      const rect = tile.getBoundingClientRect();
-      const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-      _pointerOnMove && _pointerOnMove(tile.dataset.socketId, x, y);
-    };
-    tile._pmLeave = () => {
-      _pointerOnEnd && _pointerOnEnd();
-    };
-    tile.addEventListener('mousemove', tile._pmHandler);
-    tile.addEventListener('mouseleave', tile._pmLeave);
-  }
-
-  function setPointerMode(active, onMove, onEnd) {
-    _pointerActive = active;
-    _pointerOnMove = onMove;
-    _pointerOnEnd = onEnd;
-    document.querySelectorAll('.video-tile').forEach(_attachPointerListeners);
-  }
-
-  function showPointerDot(targetSocketId, fromId, x, y, displayName) {
-    const tile = document.querySelector(`.video-tile[data-socket-id="${targetSocketId}"]`);
-    if (!tile) return;
-
-    const dotId = `ptr-${CSS.escape(fromId)}`;
-    let dot = document.getElementById(dotId);
-
-    if (!dot) {
-      dot = document.createElement('div');
-      dot.id = dotId;
-      dot.className = fromId === 'local' ? 'pointer-dot pointer-dot--local' : 'pointer-dot';
-      const ring = document.createElement('div');
-      ring.className = 'pointer-ring';
-      const label = document.createElement('span');
-      label.className = 'pointer-label';
-      dot.appendChild(ring);
-      dot.appendChild(label);
-    }
-
-    // Move to correct tile if pointer crossed tiles
-    if (dot.parentElement !== tile) tile.appendChild(dot);
-
-    dot.style.left = `${x * 100}%`;
-    dot.style.top = `${y * 100}%`;
-    dot.querySelector('.pointer-label').textContent = escapeHtml(displayName);
-  }
-
-  function hidePointerDot(fromId) {
-    const dotId = `ptr-${CSS.escape(fromId)}`;
-    const dot = document.getElementById(dotId);
-    if (dot) dot.remove();
-  }
-
   // ---- Emoji Reactions ----
 
   const REACTION_SETS = {
@@ -457,7 +391,7 @@ const UI = (() => {
     showToast, setCtrlState, showRoom, showLobby,
     showEmojiSplash, toggleEmojiPicker,
     setViewMode, setSpotlight: (id) => _handleTileClick(id),
-    showReconnecting, setPointerMode, showPointerDot, hidePointerDot,
+    showReconnecting,
     setControlAvailable, setControlBtnState
   };
 })();

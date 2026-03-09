@@ -57,7 +57,7 @@
     document.getElementById('camera-btn').addEventListener('click', () => Room.toggleVideo());
     document.getElementById('screen-btn').addEventListener('click', () => Room.toggleScreenShare());
     document.getElementById('control-btn').addEventListener('click', () => Room.toggleControl());
-    document.getElementById('point-btn').addEventListener('click', () => Room.togglePointer());
+    document.getElementById('record-btn').addEventListener('click', () => Room.toggleRecording());
     document.getElementById('react-btn').addEventListener('click', () => {
       UI.toggleEmojiPicker((emoji) => Room.sendReaction(emoji));
     });

@@ -6,7 +6,6 @@ const Room = (() => {
   let currentRoomId = null;
   let audioEnabled = true;
   let videoEnabled = true;
-  let _pointing = false;
   let _hasConnected = false;
   let _agentInfo = null;    // { agentId, displayName, screenWidth, screenHeight }
   let _controlActive = false;
@@ -32,6 +31,8 @@ const Room = (() => {
       } else {
         UI.updateTileStream(socketId, stream);
       }
+      // Add audio to active recording if one is running
+      if (Recorder.isRecording()) Recorder.addPeerStream(stream);
     };
   }
 
@@ -139,7 +140,6 @@ const Room = (() => {
     // Someone left
     Signaling.on('user-left', ({ socketId }) => {
       removePeer(socketId);
-      UI.hidePointerDot(socketId); // clean up any pointer they had
     });
 
     // Room full
@@ -200,15 +200,6 @@ const Room = (() => {
       UI.showToast('Remote control ended by agent');
     });
 
-    // Laser pointer: remote participant moving cursor
-    Signaling.on('pointer-move', ({ fromId, displayName, targetSocketId, x, y }) => {
-      UI.showPointerDot(targetSocketId, fromId, x, y, displayName);
-    });
-
-    // Laser pointer: remote participant stopped pointing
-    Signaling.on('pointer-end', ({ fromId }) => {
-      UI.hidePointerDot(fromId);
-    });
   }
 
   // ---- Join ----
@@ -286,34 +277,6 @@ const Room = (() => {
         if (err.name !== 'NotAllowedError') UI.showToast('Screen share failed');
       }
     }
-  }
-
-  function togglePointer() {
-    _pointing = !_pointing;
-    const btn = document.getElementById('point-btn');
-    UI.setCtrlState(btn, _pointing);
-    btn.querySelector('.ctrl-label').textContent = _pointing ? 'Stop' : 'Point';
-
-    if (_pointing) {
-      UI.showToast('Laser pointer on — hover over any tile', 2000);
-    } else {
-      UI.hidePointerDot('local');
-      Signaling.sendPointerEnd(currentRoomId);
-    }
-
-    UI.setPointerMode(
-      _pointing,
-      (targetSocketId, x, y) => {
-        Signaling.sendPointerMove(currentRoomId, targetSocketId, x, y);
-        UI.showPointerDot(targetSocketId, 'local', x, y, myDisplayName + ' (You)');
-      },
-      () => {
-        UI.hidePointerDot('local');
-        Signaling.sendPointerEnd(currentRoomId);
-      }
-    );
-
-    return _pointing;
   }
 
   // ---- Remote control ----
@@ -424,12 +387,33 @@ const Room = (() => {
   // ---- Leave ----
 
   function leave() {
-    _pointing = false;
     _hasConnected = false;
+    if (Recorder.isRecording()) Recorder.stop();
     peers.forEach(p => p.close());
     peers.clear();
     Media.stopAll();
     window.location.href = '/';
+  }
+
+  function toggleRecording() {
+    const btn = document.getElementById('record-btn');
+    if (Recorder.isRecording()) {
+      Recorder.stop();
+      btn.querySelector('.ctrl-icon').textContent = '⏺️';
+      btn.querySelector('.ctrl-label').textContent = 'Record';
+      btn.classList.remove('active');
+      UI.showToast('Recording saved — check your downloads', 3000);
+    } else {
+      // Collect streams from all existing peer video elements
+      const peerStreams = [...document.querySelectorAll('.video-tile:not([data-socket-id="self"]) video')]
+        .map(v => v.srcObject).filter(Boolean);
+      const ok = Recorder.start(Media.getStream(), peerStreams);
+      if (!ok) { UI.showToast('Recording not supported in this browser'); return; }
+      btn.querySelector('.ctrl-icon').textContent = '⏹️';
+      btn.querySelector('.ctrl-label').textContent = 'Stop';
+      btn.classList.add('active');
+      UI.showToast('Recording started', 2000);
+    }
   }
 
   function sendReaction(emoji) {
@@ -440,7 +424,7 @@ const Room = (() => {
   function getRoomId() { return currentRoomId; }
 
   return {
-    join, toggleAudio, toggleVideo, toggleScreenShare, togglePointer, toggleControl,
+    join, toggleAudio, toggleVideo, toggleScreenShare, toggleControl, toggleRecording,
     leave, getRoomId, getPeersArray, sendReaction
   };
 })();

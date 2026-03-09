@@ -239,11 +239,104 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
 /* ===== Responsive ===== */
+
+/* Tablet (≤ 900px) */
+@media (max-width: 900px) {
+  .chat-sidebar { width: 260px; }
+  .ctrl-btn { min-width: 60px; padding: 9px 12px; }
+}
+
+/* Mobile (≤ 700px) */
 @media (max-width: 700px) {
-  .chat-sidebar { width: 100%; position: absolute; bottom: 80px; right: 0; height: 50vh; z-index: 10; border-top: 1px solid var(--border); }
-  .lobby-card { width: 95vw; padding: 32px 24px; }
-  .controls-bar { gap: 8px; }
-  .ctrl-btn { min-width: 54px; padding: 8px 10px; }
+  /* Base */
+  html, body { font-size: 14px; overscroll-behavior: none; }
+
+  /* Lobby */
+  .lobby-card {
+    width: 100%; min-height: 100svh; border-radius: 0; border: none;
+    padding: 48px 24px 40px; justify-content: center;
+  }
+  .lobby-form input { font-size: 16px; } /* prevent iOS auto-zoom */
+
+  /* Header */
+  .room-header { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .logo-small { display: none; } /* save space */
+  .room-info { gap: 8px; }
+  .room-badge { font-size: 12px; padding: 3px 8px; }
+  .participant-count { font-size: 12px; }
+  .header-right { gap: 6px; }
+  .view-mode-bar { display: none; } /* hide on mobile — not useful with touch */
+  #copy-link-btn { font-size: 12px; padding: 6px 10px; }
+
+  /* Main layout */
+  .room-main { position: relative; overflow: hidden; }
+
+  /* Video grid */
+  .video-grid { gap: 4px; padding: 6px; align-content: start; }
+  .video-tile { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .tile-expand-btn { opacity: 1; width: 32px; height: 32px; font-size: 14px; } /* always visible on mobile */
+  .video-tile .tile-label { font-size: 11px; padding: 2px 8px; bottom: 6px; left: 6px; }
+  .video-tile .tile-icon { width: 24px; height: 24px; font-size: 12px; }
+
+  /* Spotlight sidebar: horizontal strip at bottom instead of side column */
+  .video-grid.mode-spotlight { flex-direction: column !important; }
+  .spotlight-main { flex: 1; min-height: 0; }
+  .spotlight-sidebar {
+    width: 100% !important; flex-direction: row !important; height: 100px;
+    overflow-x: auto; overflow-y: hidden; flex-shrink: 0; gap: 4px; padding-bottom: 2px;
+  }
+  .spotlight-sidebar .video-tile { width: 160px; height: 90px; flex-shrink: 0; aspect-ratio: unset; }
+
+  /* Chat: full-screen overlay */
+  .chat-sidebar {
+    width: 100%; height: 65vh; position: absolute; bottom: 0; left: 0; right: 0;
+    z-index: 20; border-left: none; border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+  }
+  .chat-input-row input { font-size: 16px; } /* prevent iOS zoom */
+
+  /* Controls bar */
+  .controls-bar {
+    gap: 6px; padding: 10px 8px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    overflow-x: auto; justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ctrl-btn {
+    min-width: 52px; padding: 8px 8px; border-radius: 10px;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+  }
+  .ctrl-icon { font-size: 20px; }
+  .ctrl-label { font-size: 10px; }
+
+  /* Toast position above controls */
+  .toast { bottom: calc(80px + env(safe-area-inset-bottom)); font-size: 13px; }
+
+  /* Emoji picker full-width on mobile */
+  .emoji-picker { width: calc(100vw - 24px); left: 12px !important; transform: translateY(-100%) !important; }
+  .reaction-btn { font-size: 22px; }
+}
+
+/* Landscape mobile */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .room-header { padding: 6px 12px; }
+  .controls-bar { padding: 6px 8px; }
+  .ctrl-btn { padding: 6px 8px; }
+  .ctrl-label { display: none; } /* hide labels to save vertical space */
+  .ctrl-icon { font-size: 22px; }
+  .video-grid { padding: 4px; gap: 4px; }
+}
+
+/* ===== Record Button ===== */
+#record-btn.active {
+  background: #3a1a1a;
+  border: 1px solid var(--danger);
+  animation: recordPulse 1.5s ease-in-out infinite;
+}
+@keyframes recordPulse {
+  0%, 100% { border-color: var(--danger); }
+  50%       { border-color: rgba(224, 85, 85, 0.3); }
 }
 
 /* ===== Remote Control Active Border ===== */
@@ -270,31 +363,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ===== Laser Pointer ===== */
-.pointer-dot {
-  position: absolute; z-index: 50;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-}
-.pointer-ring {
-  width: 20px; height: 20px; border-radius: 50%;
-  background: rgba(255, 60, 60, 0.85);
-  box-shadow: 0 0 0 3px rgba(255, 60, 60, 0.3), 0 0 12px rgba(255, 60, 60, 0.6);
-  animation: pointerPulse 1s ease-in-out infinite;
-}
-.pointer-dot--local .pointer-ring {
-  background: rgba(91, 106, 240, 0.9);
-  box-shadow: 0 0 0 3px rgba(91, 106, 240, 0.3), 0 0 12px rgba(91, 106, 240, 0.6);
-}
-.pointer-label {
-  font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap;
-  background: rgba(0,0,0,0.7); border-radius: 4px; padding: 1px 6px;
-}
-@keyframes pointerPulse {
-  0%, 100% { transform: scale(1);   opacity: 1; }
-  50%       { transform: scale(1.3); opacity: 0.7; }
-}
 
 /* ===== Reaction Picker ===== */
 .emoji-picker {
